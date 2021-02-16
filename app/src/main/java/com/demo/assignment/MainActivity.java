@@ -1,10 +1,15 @@
 package com.demo.assignment;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -24,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
   private BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
 
+  @RequiresApi(api = Build.VERSION_CODES.O)
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -38,6 +44,12 @@ public class MainActivity extends AppCompatActivity {
     } else {
       bluetoothSwitch.setChecked(false);
       bluetoothSwitch.setText("Bluetooth is OFF");
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      NotificationChannel channel = new NotificationChannel("channelId", "Connectivity Notification", NotificationManager.IMPORTANCE_HIGH);
+      NotificationManager manager = getSystemService(NotificationManager.class);
+      manager.createNotificationChannel(channel);
     }
 
     wifiSwitch.setOnClickListener(v -> toggleWifi(!wifiStatus));
@@ -110,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
           wifiSwitch.setText("WiFi is OFF");
           break;
       }
+      showNotification(wifiState(), bluetoothAdapter.isEnabled());
     }
   };
 
@@ -137,8 +150,32 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(), "Turning Bluetooth off...", Toast.LENGTH_SHORT).show();
             break;
         }
+        showNotification(wifiState(), bluetoothAdapter.isEnabled());
       }
     }
   };
+
+  private void showNotification(boolean isWifiEnabled, boolean isBluetoothEnabled) {
+    NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "channelId");
+    builder.setContentTitle("Connectivity status");
+    if (isWifiEnabled && !isBluetoothEnabled) {
+      builder.setContentText("Only wifi is enabled");
+    }
+    if (!isWifiEnabled && isBluetoothEnabled) {
+      builder.setContentText("Only bluetooth is enabled");
+    }
+    if (!isWifiEnabled && !isBluetoothEnabled) {
+      builder.setContentText("Nothing enabled");
+    }
+    if (isWifiEnabled && isBluetoothEnabled) {
+      builder.setContentText("Both wifi and bluetooth are enabled");
+    }
+    builder.setSmallIcon(R.drawable.ic_launcher_foreground);
+    builder.setOngoing(true);
+    builder.setAutoCancel(false);
+
+    NotificationManagerCompat managerCompat = NotificationManagerCompat.from(this);
+    managerCompat.notify(1, builder.build());
+  }
 
 }
